@@ -1,56 +1,71 @@
 import pygame
 import firebase_admin
-from firebase_admin import credentials, storage
-import io  
-import database
+from firebase_admin import credentials
+import settings as set
+cred = credentials.Certificate("swgame.json")
+firebase_admin.initialize_app(cred)
+class Monster:
+  def __init__(self, data, skill_data_ref):
+    if data is None: 
+      print("어류")
+      return
 
-class Character(pygame.sprite.Sprite):
+    self.name = data.get('name', 'Unknown')
+    self.max_hp = data.get('hp', 100)
+    self.current_hp = self.max_hp
+    self.color = data.get('color', [set.Black])
+    self.skills = []
+    raw_skills = data.get('skills', [])
+    if isinstance(raw_skills, str):
+      raw_skills = [raw_skills]
 
-  def __init__ (self, name, color, x, y, hp, skills = None):
-
-    # 부모 클래스 받아오기
-    super().__init__()
-
-    # 이미지 처리
-    self.name = name
-    self.image = pygame.Surface((50, 50))
-    self.image.fill(color)
-    self.rect = self.image.get_rect()
-
-    # 데이터 처리 
-    self.max_hp = hp
-    self.current_hp = hp
-    if skills:
-      self.skills = skills 
-    else:
-      self.skills = [None] * 4
-
-  # 스킬 추가 함수
-  def set_skills(self, new_skills):
-        for i in range(min(len(new_skills), 4)):
-            self.skills[i] = new_skills[i]
-  
-  def get_skill(self, slot_index):
-        # [수정 4] 인덱스 범위 수정 (0, 1, 2, 3 이니까 < 4)
-        if 0 <= slot_index < 4:
-            return self.skills[slot_index]
-        else:
-            print("잘못된 스킬 슬롯입니다.")
-            return None
-
+    for skill_id in raw_skills:
+      if skill_id in skill_data_ref:
+        self.skills.append(skill_data_ref[skill_id])
+      else:
+        print(f"오류: '{skill_id}'라는 스킬을 찾을 수 없습니다. (DB 확인 필요)")  
+            
   def take_damage(self, amount):
     self.current_hp -= amount
-    print(f"으악! {self.name}가 {amount} 데미지를 입었습니다. (남은 체력: {self.hp})")
-     
-  def attack(self, target, slot_index):
+    if self.current_hp < 0:
+      self.current_hp = 0
 
-    skill = self.get_skill(slot_index)
-
-    if skill is None:
-      print(f"{self.name}의 {slot_index}번 슬롯이 비어있습니다!")
-      return
-    damage_amount = skill.get('damage', 0) # 없으면 0
-    target.take_damage(damage_amount)
+  def heal(self, amount):
+    self.current_hp += amount
+    if self.current_hp > self.max_hp:
+      self.current_hp = self.max_hp
+    print(f"{self.name}의 체력이 {self.current_hp}/{self.max_hp}로 회복됨.")
     
-    
+  def is_alive(self):
+        return self.current_hp > 0
+  
+class BattleManager():
+  def __init__(self, player, enemy):
+    self.player = player
+    self.enemy = enemy
+    self.turn = "PLAYER"
+    self.log = "Firestore 연동 성공!"    
 
+  def get_matchup_multiplier(self, attacker, defender):
+      multiplier = 1.0
+      if attacker.id in self.matchup_data:
+          if defender.id in self.matchup_data[attacker.id]:
+              multiplier = self.matchup_data[attacker.id][defender.id]
+      return multiplier
+
+  def use_skill(self, user, target, skill_index):
+    if skill_index >= len(user.skills):
+            return
+    skill = user.skills[skill_index]
+    skill_type = skill.get('type', 'ATTACK') # 타입 없으면 기본 공격으로 처리
+    power = skill.get('power', 0)
+        
+        # 1. 공격 스킬
+    if skill_type == 'ATTACK':
+      target.take_damage(power)
+      self.log = f"[{user.name}] {skill['name']} 사용! -> {target.name}에게 {power} 데미지!"
+            
+        # 2. 회복 스킬 (대상은 무조건 자기 자신)
+    elif skill_type == 'HEAL':
+      user.heal(power)
+      self.log = f"[{user.name}] {skill['name']} 사용! -> 체력 {power} 회복."
