@@ -5,9 +5,7 @@ import sys
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
-import time
-
-
+import time, random
 
 
 
@@ -19,11 +17,12 @@ def main():
 
   db = firestore.client()
   pg.init()
-
+  game_over = False
   screen = pg.display.set_mode((set.Screen_Width, set.Screen_Heigth))
   pg.display.set_caption("Woosong Sw gmae v 1.0 ")  
   clock = pg.time.Clock()
   font = pg.font.SysFont('malgungothic', 20)
+  big_font = pg.font.SysFont('malgungothic', 50, bold=True)
   screen.fill((255, 255, 255))
   loading_text = font.render("클라우드에서 데이터를 불러오는 중...", True, (0,0,0))
   screen.blit(loading_text, (250, 280))
@@ -58,14 +57,14 @@ def main():
     screen.fill((250, 250, 250)) # 초기화
         
     # 플레이어 그리기
-    pg.draw.rect(screen, player.color, (100, 300, 150, 150))
+    screen.blit(player.image, (100, 300))
     p_name = font.render(player.name, True, (0,0,0))
     p_hp = font.render(f"HP: {player.current_hp} / {player.max_hp}", True, (255, 0, 0))
     screen.blit(p_name, (100, 270))
     screen.blit(p_hp, (100, 460))
 
     # 적 그리기
-    pg.draw.rect(screen, enemy.color, (550, 50, 150, 150))
+    screen.blit(enemy.image, (550, 60))
     e_name = font.render(enemy.name, True, (0,0,0))
     e_hp = font.render(f"HP: {enemy.current_hp} / {enemy.max_hp}", True, (255, 0, 0))
     screen.blit(e_name, (550, 20))
@@ -90,13 +89,33 @@ def main():
   while running:
     
     draw_screen()
+    if player.current_hp <= 0:
+      game_over = True
+      text = big_font.render("졌습니다... ㅠㅠ", True, (0, 0, 0)) # 검은 그림자
+      text_front = big_font.render("졌습니다... ㅠㅠ", True, (255, 0, 0)) # 빨간 글씨
+      text_rect = text.get_rect(center=(400, 300))      
+      screen.blit(text, (text_rect.x + 2, text_rect.y + 2)) # 그림자 효과
+      screen.blit(text_front, text_rect)
+
+    elif enemy.current_hp <= 0:
+            # (2) 플레이어 승리
+      game_over = True
+      text = big_font.render("승리!! 축하합니다!", True, (0, 0, 0))
+      text_front = big_font.render("승리!! 축하합니다!", True, (0, 0, 255)) # 파란 글씨
+            
+      text_rect = text.get_rect(center=(400, 300))
+            
+      screen.blit(text, (text_rect.x + 2, text_rect.y + 2))
+      screen.blit(text_front, text_rect)
     pg.display.flip()
     clock.tick(60)
 
     for event in pg.event.get():
       if event.type == pg.QUIT:
-        running = False
-            
+        pg.quit()
+        sys.exit()
+      if game_over:
+        continue        
       if event.type == pg.KEYDOWN and battle.turn == "PLAYER":
         skill_idx = -1
         if event.key == pg.K_1: skill_idx = 0
@@ -113,7 +132,7 @@ def main():
           battle.turn = "ENEMY"
 
     if battle.turn == "ENEMY" and enemy.is_alive() and player.is_alive():
-      battle.use_skill(enemy, player, 0) # 적은 0번 스킬(공격)만 사용한다고 가정
+      battle.use_skill(enemy, player, random.randint(0,3)) # 적은 0번 스킬(공격)만 사용한다고 가정
       draw_screen()
       pg.display.flip()
       pg.time.delay(1000)

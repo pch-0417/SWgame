@@ -7,13 +7,21 @@ firebase_admin.initialize_app(cred)
 class Monster:
   def __init__(self, data, skill_data_ref):
     if data is None: 
-      print("어류")
+      print("오류")
       return
-
     self.name = data.get('name', 'Unknown')
     self.max_hp = data.get('hp', 100)
     self.current_hp = self.max_hp
-    self.color = data.get('color', [set.Black])
+    img_name = data.get('Image', 'default.png')
+    img_path = f"Img/{img_name}"
+    print(img_path)
+    try:
+      raw_image = pygame.image.load(img_path).convert_alpha()
+      self.image = pygame.transform.scale(raw_image, (150, 150))
+    except:
+      print("이미지를 찾을 수 없습니다. ")
+      self.image = pygame.Surface((150, 150))
+      self.image.fill((255, 0, 255))
     self.skills = []
     raw_skills = data.get('skills', [])
     if isinstance(raw_skills, str):
