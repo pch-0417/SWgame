@@ -8,6 +8,9 @@ from firebase_admin import firestore
 import time
 
 
+
+
+
 def main():
   cred = credentials.Certificate("swgame.json")
 
@@ -51,59 +54,70 @@ def main():
   enemy = Monster(all_monsters_data["m_02"], all_skills_data)
     
   battle = BattleManager(player, enemy)
+  def draw_screen():
+    screen.fill((250, 250, 250)) # 초기화
+        
+    # 플레이어 그리기
+    pg.draw.rect(screen, player.color, (100, 300, 150, 150))
+    p_name = font.render(player.name, True, (0,0,0))
+    p_hp = font.render(f"HP: {player.current_hp} / {player.max_hp}", True, (255, 0, 0))
+    screen.blit(p_name, (100, 270))
+    screen.blit(p_hp, (100, 460))
+
+    # 적 그리기
+    pg.draw.rect(screen, enemy.color, (550, 50, 150, 150))
+    e_name = font.render(enemy.name, True, (0,0,0))
+    e_hp = font.render(f"HP: {enemy.current_hp} / {enemy.max_hp}", True, (255, 0, 0))
+    screen.blit(e_name, (550, 20))
+    screen.blit(e_hp, (550, 210))
+
+    #로그 박스 및 텍스트
+    pg.draw.rect(screen, (220, 220, 220), (50, 500, 700, 80))
+    log_text = font.render(battle.log, True, (0,0,0))
+    screen.blit(log_text, (70, 530))
+
+    # 턴 안내 
+
+    if battle.turn == "PLAYER":
+      guide_text = font.render("[당신의 턴] 스킬을 입력 해주세요!", True, (0, 0, 255))
+      screen.blit(guide_text, (100, 480))
+    else:
+      guide_text = font.render("[적의 턴] 상대방이 생각 중입니다...", True, (255, 0, 0))
+      screen.blit(guide_text, (550, 230))
+      
 
   running = True
   while running:
+    
+    draw_screen()
+    pg.display.flip()
+    clock.tick(60)
 
     for event in pg.event.get():
       if event.type == pg.QUIT:
         running = False
             
       if event.type == pg.KEYDOWN and battle.turn == "PLAYER":
-        if event.key == pg.K_1: # 1번 스킬
-          battle.use_skill(player, enemy, 0)
+        skill_idx = -1
+        if event.key == pg.K_1: skill_idx = 0
+        elif event.key == pg.K_2: skill_idx = 1
+        elif event.key == pg.K_3: skill_idx = 2
+        elif event.key == pg.K_4: skill_idx = 3
+
+        if skill_idx != -1:
+          battle.use_skill(player, enemy, skill_idx)
+          draw_screen()
+          pg.display.flip()
+          pg.time.delay(1000)         
+          #턴 넘기기
           battle.turn = "ENEMY"
-        elif event.key == pg.K_2: # 2번 스킬
-          battle.use_skill(player, enemy, 1)
-          battle.turn = "ENEMY"
 
-      if battle.turn == "ENEMY" and enemy.is_alive() and player.is_alive(): 
-        pass 
-        
-      pg.draw.rect(screen, player.color, (100, 300, 150, 150))
-      p_name = font.render(player.name, True, (0,0,0))
-      p_hp = font.render(f"HP: {player.current_hp} / {player.max_hp}", True, (255, 0, 0))
-      screen.blit(p_name, (100, 270))
-      screen.blit(p_hp, (100, 460))
-
-        # (2) 적 그리기 (오른쪽 위)
-      pg.draw.rect(screen, enemy.color, (550, 50, 150, 150))
-      e_name = font.render(enemy.name, True, (0,0,0))
-      e_hp = font.render(f"HP: {enemy.current_hp} / {enemy.max_hp}", True, (255, 0, 0))
-      screen.blit(e_name, (550, 20))
-      screen.blit(e_hp, (550, 210))
-
-      # (3) 로그 및 UI 텍스트
-      #  screen.fill((250, 250, 250)) # 배경색전투 로그 박스
-      pg.draw.rect(screen, (220, 220, 220), (50, 500, 700, 80))
-      log_text = font.render(battle.log, True, (0,0,0))
-      screen.blit(log_text, (70, 530))
-
-        # 조작 안내
-      if battle.turn == "PLAYER":
-        guide_text = font.render("[당신의 턴] 1번 키: 첫번째 스킬 / 2번 키: 두번째 스킬", True, (0, 0, 255))
-        screen.blit(guide_text, (100, 480))
-      else:
-        guide_text = font.render("[적의 턴] 상대방이 생각 중입니다...", True, (255, 0, 0))
-        screen.blit(guide_text, (550, 230))
-
-        # 적 턴 로직 실행 (화면 갱신 후 딜레이 적용)
-      if battle.turn == "ENEMY" and enemy.is_alive() and player.is_alive():
-        battle.use_skill(enemy, player, 0) # 적은 0번 스킬(공격)만 사용한다고 가정
-        battle.turn = "PLAYER"
-    
-    pg.display.flip()
-    clock.tick(60)
+    if battle.turn == "ENEMY" and enemy.is_alive() and player.is_alive():
+      battle.use_skill(enemy, player, 0) # 적은 0번 스킬(공격)만 사용한다고 가정
+      draw_screen()
+      pg.display.flip()
+      pg.time.delay(1000)
+      battle.turn = "PLAYER"
 
   pg.quit()
   sys.exit()

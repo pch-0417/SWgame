@@ -60,12 +60,12 @@ class BattleManager():
     skill_type = skill.get('type', 'ATTACK') # 타입 없으면 기본 공격으로 처리
     power = skill.get('power', 0)
         
-        # 1. 공격 스킬
+    # 1. 공격 스킬
     if skill_type == 'ATTACK':
       target.take_damage(power)
       self.log = f"[{user.name}] {skill['name']} 사용! -> {target.name}에게 {power} 데미지!"
             
-        # 2. 회복 스킬 (대상은 무조건 자기 자신)
+    # 2. 회복 스킬 (대상은 무조건 자기 자신)
     elif skill_type == 'HEAL':
       user.heal(power)
       self.log = f"[{user.name}] {skill['name']} 사용! -> 체력 {power} 회복."
